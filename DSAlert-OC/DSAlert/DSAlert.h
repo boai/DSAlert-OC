@@ -4,38 +4,28 @@
  *
  *  @author     DS-Team
  *  @copyright  Copyright © 2016年 DS-Team. All rights reserved.
- *  @version    V1.0.0
+ *  @version    V1.1.0
  */
 
-/*
- ***************************   DSAlert 项目简介：  **********************
+/*!
+ *********************************************************************************
+ ************************************ 更新说明 ************************************
+ *********************************************************************************
  
- 1、开发人员【DS-Team】：
- 孙博岩：[『https://github.com/boai』](https://github.com/boai)<br>
- 陆晓峰：[『https://github.com/zeR0Lu』](https://github.com/zeR0Lu)<br>
- 陈集  ：[『https://github.com/chenjipdc』](https://github.com/chenjipdc)
- 2、项目源码地址：
- OC版   ：https://github.com/DS-Team/DSAlert-OC
- swift版：https://github.com/DS-Team/DSAlert-swift
- 3、安装及使用方式：
- * 3.1、pod 导入【当前最新版本：1.0.0】：
- pod 'DSAlert'
- 导入头文件：#import <DSAlert.h>
- * 3.2、下载demo，把 DSAlert 文件夹拖入项目即可，
- 导入头文件：#import "DSAlert.h"
- 4、如果开发中遇到特殊情况或者bug，请及时反馈给我们，谢谢！
- 5、也可以加入我们的大家庭：QQ群 【 479663605 】，希望广大小白和大神能够积极加入！
+ 最新更新时间：2017-05-08 【倒叙】
+ 最新Version：【Version：1.1.0】
+ 更新内容：
+ 1.1.0.1、优化方法名命名规范
+ 1.1.0.2、新增键盘内部处理，详见 demo 5
+ 1.1.0.3、用原生 autoLayout 重构，自定义 alert 的布局再也不是问题了
+ 1.1.0.4、优化代码结构，修复内在隐藏内存泄漏
+ 1.1.0.5、新增 DSAlert_OC.h 文件，只需导入 DSAlert_OC.h 一个文件就可以使用 alert 和 actionSheet 了
+ 1.1.0.6、删除了部分代码和属性，具体见源码 和 demo
  
  */
 
 
 #import <UIKit/UIKit.h>
-
-#define SCREENWIDTH    [UIScreen mainScreen].bounds.size.width
-#define SCREENHEIGHT   [UIScreen mainScreen].bounds.size.height
-
-#define DSWeak         __weak __typeof(self) weakSelf = self
-
 
 /*! 背景高斯模糊枚举 默认：1 */
 typedef NS_ENUM(NSInteger, DSAlertBlurEffectStyle) {
@@ -60,19 +50,16 @@ typedef NS_ENUM(NSUInteger, DSAlertAnimatingStyle) {
 @interface DSAlert : UIView
 
 /*! 背景颜色 默认：半透明*/
-@property (nonatomic, strong) UIColor   *bgColor;
-
-///*! 按钮字体颜色 默认：白色*/
-//@property (nonatomic, strong) UIColor   *buttonTitleColor;
+@property (nonatomic, strong) UIColor *bgColor;
 
 /*! 是否开启边缘触摸隐藏 alert 默认：NO */
-@property (nonatomic, assign) BOOL       isTouchEdgeHide;
+@property (nonatomic, assign) BOOL isTouchEdgeHide;
 
 /*! 背景图片名字 默认：没有图片*/
-@property (nonatomic, strong) NSString  *bgImageName;
+@property (nonatomic, strong) NSString *bgImageName;
 
 /*! 是否开启进出场动画 默认：NO，如果 YES ，并且同步设置进出场动画枚举为默认值：1 */
-@property (nonatomic, assign, getter=isShowAnimate) BOOL       showAnimate;
+@property (nonatomic, assign, getter=isShowAnimate) BOOL showAnimate;
 
 /*! 进出场动画枚举 默认：1 ，并且默认开启动画开关 */
 @property (nonatomic, assign) DSAlertAnimatingStyle animatingStyle;
@@ -85,15 +72,9 @@ typedef NS_ENUM(NSUInteger, DSAlertAnimatingStyle) {
  */
 @property (strong, nonatomic) void (^buttonActionBlock)(NSInteger index);
 
-/**
- *  autoresizing的开关,如果在使用全自定义的方式而且使用autoresizing的情况下可以设置这个为true.  默认:false
- */
-@property (assign, nonatomic) BOOL UseAutoresizing;
 
-
-#pragma mark - 1、高度封装一行即可完全配置alert，如不习惯，可使用第二种常用方法
 /*!
- *  创建一个完全自定义的 alertView
+ *  创建一个完全自定义的 alertView，注意：【自定义 alert 只适用于竖屏状态！】
  *
  *  @param customView    自定义 View
  *  @param configuration 属性配置：如 bgColor、buttonTitleColor、isTouchEdgeHide...
@@ -119,29 +100,6 @@ typedef NS_ENUM(NSUInteger, DSAlertAnimatingStyle) {
             buttonTitlesColor:(NSArray <UIColor *>*)buttonTitlesColor
                 configuration:(void (^)(DSAlert *tempView)) configuration
                   actionClick:(void (^)(NSInteger index)) action;
-
-#pragma mark - 2、常用方法
-/*!
- *  初始化自定义动画视图
- *  @return instancetype
- */
-- (instancetype)initWithCustomView:(UIView *)customView;
-
-/*!
- *  创建一个类似系统的警告框
- *
- *  @param title        title
- *  @param message      message
- *  @param image        image
- *  @param buttonTitles 按钮的标题
- *  @param buttonTitles  按钮标题颜色：可空，默认蓝色
- *  @return 创建一个类似系统的警告框
- */
-- (instancetype)ds_showTitle:(NSString *)title
-                     message:(NSString *)message
-                       image:(UIImage *)image
-                buttonTitles:(NSArray *)buttonTitles
-           buttonTitlesColor:(NSArray <UIColor *>*)buttonTitlesColor;
 
 /*!
  *  视图显示

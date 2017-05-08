@@ -4,34 +4,17 @@
  *
  *  @author     DS-Team
  *  @copyright  Copyright © 2016年 DS-Team. All rights reserved.
- *  @version    V1.0.0
+ *  @version    V1.1.0
  */
-
-/*
- ***************************   DSAlert 项目简介：  **********************
- 
- 1、开发人员【DS-Team】：
- 孙博岩：[『https://github.com/boai』](https://github.com/boai)<br>
- 陆晓峰：[『https://github.com/zeR0Lu』](https://github.com/zeR0Lu)<br>
- 陈集  ：[『https://github.com/chenjipdc』](https://github.com/chenjipdc)
- 2、项目源码地址：
- OC版   ：https://github.com/DS-Team/DSAlert-OC
- swift版：https://github.com/DS-Team/DSAlert-swift
- 3、安装及使用方式：
- * 3.1、pod 导入【当前最新版本：1.0.0】：
- pod 'DSAlert'
- 导入头文件：#import <DSAlert.h>
- * 3.2、下载demo，把 DSAlert 文件夹拖入项目即可，
- 导入头文件：#import "DSAlert.h"
- 4、如果开发中遇到特殊情况或者bug，请及时反馈给我们，谢谢！
- 5、也可以加入我们的大家庭：QQ群 【 479663605 】，希望广大小白和大神能够积极加入！
- 
- */
-
-
 
 #import "DSActionSheet.h"
 #import "DSTableCell.h"
+#import "CALayer+Animation.h"
+#import "DSAlert_OC.h"
+
+/*! RGB色值 */
+#define DS_COLOR(R, G, B, A)       [UIColor colorWithRed:R/255.0 green:G/255.0 blue:B/255.0 alpha:A]
+#define DS_COLOR_Translucent       [UIColor colorWithRed:0.1f green:0.1f blue:0.1f alpha:0.3f]
 
 @interface DSActionSheet ()
 <
@@ -40,8 +23,7 @@
 >
 /*! tableView */
 @property (strong, nonatomic) UITableView  *tableView;
-/*! 触摸背景消失 */
-@property (strong, nonatomic) UIControl    *overlayControl;
+
 /*! 数据源 */
 @property (strong, nonatomic) NSArray      *dataArray;
 /*! 图片数组 */
@@ -55,16 +37,12 @@
 /*! 自定义样式 */
 @property (assign, nonatomic) DSCustomActionSheetStyle viewStyle;
 
+@property (nonatomic, strong) UIWindow *actionSheetWindow;
+
+
 @end
 
 @implementation DSActionSheet
-
-+ (instancetype)shareActionSheet
-{
-    DSActionSheet *actionSheet   = [[self alloc] init];
-    actionSheet.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin;
-    return actionSheet;
-}
 
 /*!
  *
@@ -83,7 +61,8 @@
                       configuration:(void (^)(DSActionSheet *tempView)) configuration
                   ClikckButtonIndex:(ButtonActionBlock)clikckButtonIndex
 {
-    DSActionSheet *actionSheet       = [self shareActionSheet];
+    
+    DSActionSheet *actionSheet       = [[self alloc] init];
     actionSheet.dataArray            = contentArray;
     actionSheet.callback             = clikckButtonIndex;
     actionSheet.viewStyle            = style;
@@ -94,8 +73,34 @@
     {
         configuration(actionSheet);
     }
-    [actionSheet.tableView reloadData];
-    [actionSheet show];
+    //    [actionSheet.tableView reloadData];
+    [actionSheet ds_showDSActionSheet];
+    
+    
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        [self setupCommonUI];
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self setupCommonUI];
+    }
+    return self;
+}
+
+- (void)setupCommonUI
+{
+    self.backgroundColor = DS_COLOR_Translucent;
+    [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(handleDeviceOrientationRotateAction:) name:UIDeviceOrientationDidChangeNotification object:nil];
 }
 
 #pragma mark - UITableView
@@ -194,60 +199,156 @@
     else if ( 1 == indexPath.section )
     {
         NSLog(@"【 DSActionSheet 】你点击了取消按钮！");
-        [self fadeOut];
+        [self ds_dismissDSActionSheet];
     }
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
-#pragma mark - UpdateFrame
-- (void)fadeIn
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    CGFloat tableViewHeight = MIN(SCREENHEIGHT - 64.f, self.tableView.contentSize.height);
-    self.tableView.frame = CGRectMake(0.f, 0.f, SCREENWIDTH, tableViewHeight);
-    
-    self.frame = CGRectMake(0.f, SCREENHEIGHT, SCREENWIDTH, tableViewHeight);
-    DSWeak;
-    [UIView animateWithDuration:.25f animations:^{
-        weakSelf.frame = CGRectMake(0.f, SCREENHEIGHT - tableViewHeight, SCREENWIDTH, tableViewHeight);
-    }];
+    NSLog(@"触摸了边缘隐藏View！");
+    UITouch *touch = [touches anyObject];
+    UIView *view = [touch view];
+    if (!self.isTouchEdgeHide)
+    {
+        NSLog(@"触摸了View边缘，但您未开启触摸边缘隐藏方法，请设置 isTouchEdgeHide 属性为 YES 后再使用！");
+        return;
+    }
+    if ([view isKindOfClass:[self class]])
+    {
+        [self ds_dismissDSActionSheet];
+    }
 }
 
-- (void)fadeOut
+- (void)handleDeviceOrientationRotateAction:(NSNotification *)noti
 {
-    DSWeak;
-    [UIView animateWithDuration:.25f animations:^{
-        weakSelf.frame = CGRectMake(0.f, SCREENHEIGHT, SCREENWIDTH, CGRectGetHeight(weakSelf.frame));
-    } completion:^(BOOL finished) {
-        if (finished) {
-            [weakSelf.overlayControl removeFromSuperview];
-            weakSelf.overlayControl = nil;
-            [weakSelf removeFromSuperview];
-        }
-    }];
+    [self ds_layoutSubViews];
 }
 
 - (void)layoutSubviews
 {
-    
     [super layoutSubviews];
-    
-    CGFloat tableViewHeight       = MIN(SCREENHEIGHT - 64.f, self.tableView.contentSize.height);
-    self.tableView.frame      = CGRectMake(0.f, 0.f, SCREENWIDTH, tableViewHeight);
-    self.frame                = CGRectMake(0.f, SCREENHEIGHT - tableViewHeight, SCREENWIDTH, tableViewHeight);
 }
 
-- (void)show
+- (void)ds_layoutSubViews
 {
-    UIWindow *keywindow = [[UIApplication sharedApplication] keyWindow];
-    [keywindow addSubview:self.overlayControl];
-    [keywindow addSubview:self];
-    [self fadeIn];
+    self.frame = self.window.bounds;
+    self.actionSheetWindow.frame = self.window.bounds;
+    
+    CGFloat min_x = 0;
+    CGFloat min_y = 0;
+    CGFloat min_w = 0;
+    CGFloat min_h = 0;
+    
+    min_x = 0;
+    min_h = MIN(SCREENHEIGHT - 64.f, self.tableView.contentSize.height);
+    min_y = SCREENHEIGHT - min_h;
+    min_w = SCREENWIDTH;
+    self.tableView.frame = CGRectMake(min_x, min_y, min_w, min_h);
+}
+
+- (void)ds_showDSActionSheet
+{
+    [self.actionSheetWindow addSubview:self];
+    
+    [self ds_layoutSubViews];
+    
+    /*! 设置默认样式为： */
+    if (self.isShowAnimate)
+    {
+        _animatingStyle = DSActionSheetAnimatingStyleScale;
+    }
+    /*! 如果没有开启动画，就直接默认第一个动画样式 */
+    else if (!self.isShowAnimate && self.animatingStyle)
+    {
+        self.showAnimate = YES;
+    }
+    else
+    {
+        NSLog(@"您没有开启动画，也没有设置动画样式，默认为没有动画！");
+    }
+    
+    if (self.isShowAnimate)
+    {
+        [self showAnimationWithView:self.tableView];
+    }
+    else
+    {
+        
+    }
 }
 
 - (void)ds_dismissDSActionSheet
 {
-    NSLog(@"【 DSActionSheet 】你触摸了背景隐藏！");
-    [self fadeOut];
+    if (self.isShowAnimate)
+    {
+        [self dismissAnimationView:self.tableView];
+    }
+    else
+    {
+        [self ds_removeSelf];
+    }
+}
+
+#pragma mark - 进场动画
+- (void )showAnimationWithView:(UIView *)animationView
+{
+    if (self.animatingStyle == DSActionSheetAnimatingStyleScale)
+    {
+        [animationView scaleAnimationShowFinishAnimation:^{
+        }];
+    }
+    else if (self.animatingStyle == DSActionSheetAnimatingStyleShake)
+    {
+        [animationView.layer shakeAnimationWithDuration:1.0 shakeRadius:16.0 repeat:1 finishAnimation:^{
+        }];
+    }
+    else if (self.animatingStyle == DSActionSheetAnimatingStyleFall)
+    {
+        [animationView.layer fallAnimationWithDuration:0.35 finishAnimation:^{
+        }];
+    }
+}
+
+#pragma mark - 出场动画
+- (void )dismissAnimationView:(UIView *)animationView
+{
+    BAKit_WeakSelf;
+    if (self.animatingStyle == DSActionSheetAnimatingStyleScale)
+    {
+        [animationView scaleAnimationDismissFinishAnimation:^{
+            BAKit_StrongSelf
+            [self performSelector:@selector(ds_removeSelf)];
+        }];
+    }
+    else if (self.animatingStyle == DSActionSheetAnimatingStyleShake)
+    {
+        [animationView.layer floatAnimationWithDuration:0.35f finishAnimation:^{
+            BAKit_StrongSelf
+            [self performSelector:@selector(ds_removeSelf)];
+        }];
+    }
+    else if (self.animatingStyle == DSActionSheetAnimatingStyleFall)
+    {
+        [animationView.layer floatAnimationWithDuration:0.35f finishAnimation:^{
+            BAKit_StrongSelf
+            [self performSelector:@selector(ds_removeSelf)];
+        }];
+    }
+    else
+    {
+        NSLog(@"您没有选择出场动画样式：animatingStyle，默认为没有动画样式！");
+        [self performSelector:@selector(ds_removeSelf)];
+    }
+}
+
+
+- (void)ds_removeSelf
+{
+    [self.tableView removeFromSuperview];
+    self.tableView = nil;
+    [self removeFromSuperview];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark - lazy
@@ -261,22 +362,36 @@
         _tableView.scrollEnabled   = NO;
         _tableView.separatorStyle  = UITableViewCellSeparatorStyleNone;
         _tableView.backgroundColor = [UIColor colorWithWhite:0.9 alpha:1.f];
+        self.backgroundColor = DS_COLOR_Translucent;
         [self addSubview:_tableView];
         [_tableView registerNib:[UINib nibWithNibName:DSASCellIdentifier bundle:nil] forCellReuseIdentifier:DSASCellIdentifier];
     }
     return _tableView;
 }
 
-- (UIControl *)overlayControl
+- (UIWindow *)actionSheetWindow
 {
-    if ( !_overlayControl )
+    if (!_actionSheetWindow)
     {
-        _overlayControl                 = [[UIControl alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-        _overlayControl.backgroundColor = [UIColor colorWithRed:.16 green:.17 blue:.21 alpha:.5];
-        [_overlayControl addTarget:self action:@selector(ds_dismissDSActionSheet) forControlEvents:UIControlEventTouchUpInside];
-        _overlayControl.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleBottomMargin;
+        _actionSheetWindow = [UIApplication sharedApplication].keyWindow;
+        self.actionSheetWindow.backgroundColor = DS_COLOR_Translucent;
     }
-    return _overlayControl;
+    return _actionSheetWindow;
+}
+
+- (void)setIsTouchEdgeHide:(BOOL)isTouchEdgeHide
+{
+    _isTouchEdgeHide = isTouchEdgeHide;
+}
+
+- (void)setShowAnimate:(BOOL)showAnimate
+{
+    _showAnimate = showAnimate;
+}
+
+- (void)setAnimatingStyle:(DSActionSheetAnimatingStyle)animatingStyle
+{
+    _animatingStyle = animatingStyle;
 }
 
 @end
